@@ -17,21 +17,20 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-sm mb-8">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm mb-8">
             <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-            <span>Compiler Front-End Mini Project</span>
+            <span>CompilerFlow Advanced Compiler Studio</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
-            Algorithm to <br className="md:hidden" />
+            Welcome to <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-sm">
-              C Program
-            </span> Converter
+              CompilerFlow
+            </span>
           </h1>
           
-          <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12">
-            A full-stack web application demonstrating lexical analysis, syntax parsing, 
-            parse tree visualization, and code generation from pseudo-code algorithms.
+          <p className="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-12">
+            An advanced compiler simulator and visual education suite featuring multi-language translation, semantic checking, optimizations, and live execution.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

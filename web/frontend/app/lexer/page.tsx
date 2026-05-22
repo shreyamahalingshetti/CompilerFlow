@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
@@ -8,8 +8,8 @@ import { ArrowRight, ArrowLeft, TerminalSquare, AlertTriangle } from "lucide-rea
 
 export default function LexerPage() {
   const router = useRouter();
-  const { tokens, lexErrors, code, setParseTree, setParseErrors, setVariables, setCCode, setSymbolTable } = useStore();
-  const [isParsing, setIsParsing] = useState(false);
+  const { tokens, lexErrors } = useStore();
+  const [isParsing] = [false];
 
   // Stats
   const stats = {
@@ -35,29 +35,10 @@ export default function LexerPage() {
     return "text-orange-400 bg-orange-400/10 border-orange-400/20"; // operators
   };
 
-  const handleParse = async () => {
-    setIsParsing(true);
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-      const res = await fetch(`${API_URL}/api/parse`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
-      });
-      const data = await res.json();
-      
-      setParseTree(data.tree);
-      setParseErrors(data.errors);
-      setVariables(data.variables || []);
-      setSymbolTable(data.symbolTable || {});
-      
-      router.push("/parser");
-    } catch (err) {
-      console.error("Parsing failed", err);
-      alert("Failed to connect to backend server");
-    } finally {
-      setIsParsing(false);
-    }
+  const handleParse = () => {
+    // Editor already ran the full pipeline (tokenize + parse + codegen)
+    // and stored everything in Zustand — navigate directly to /parser
+    router.push("/parser");
   };
 
   if (!tokens || tokens.length === 0) {
