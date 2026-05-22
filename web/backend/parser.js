@@ -6,9 +6,31 @@ class Parser {
     this.tree = null;
     this.variables = new Set();
     this.symbolTable = new Map();
+    this.parseSteps = []; // Holds transition step objects for step-by-step animation
+  }
+
+  logStep(rule, matchedToken = null) {
+    const token = matchedToken || this.peek();
+    
+    // Construct parser stack representation from rule
+    const stack = ['Program', 'Statements'];
+    if (rule.startsWith('Statement ->')) {
+      stack.push('Statement');
+    } else if (rule.startsWith('factor ->') || rule.startsWith('expr ->') || rule.startsWith('term ->')) {
+      stack.push('Statement', 'Expression');
+    }
+
+    this.parseSteps.push({
+      token: token.lexeme || token.token || 'EOF',
+      rule,
+      line: token.line,
+      col: token.col,
+      stack
+    });
   }
 
   parse() {
+    this.parseSteps = [];
     this.tree = this.program();
     
     // Check if we consumed all tokens (except EOF)
@@ -21,7 +43,8 @@ class Parser {
       errors: this.errors,
       tree: this.tree,
       variables: Array.from(this.variables),
-      symbolTable: Object.fromEntries(this.symbolTable)
+      symbolTable: Object.fromEntries(this.symbolTable),
+      parseSteps: this.parseSteps
     };
   }
 
@@ -60,8 +83,6 @@ class Parser {
   consume(type, message) {
     if (this.check(type)) return this.advance();
     this.error(message);
-    // Simple recovery: just advance to prevent infinite loops in some cases
-    // but here we might just throw or return null to stop current rule
     throw new Error(message);
   }
 
@@ -78,17 +99,20 @@ class Parser {
 
   // program → START declarations statements STOP
   program() {
-    const node = { type: 'Program', children: [] };
+    const node = { type: 'Program', children: [], line: 1, col: 1 };
     try {
-      this.consume('START', 'Expected START at beginning of program');
-      node.children.push({ type: 'Terminal', value: 'START' });
+      this.logStep('Program -> START Declarations Statements STOP');
+      const startToken = this.consume('START', 'Expected START at beginning of program');
+      node.line = startToken.line;
+      node.col = startToken.col;
+      node.children.push({ type: 'Terminal', value: 'START', line: startToken.line, col: startToken.col });
 
       node.children.push(this.declarations());
 
       node.children.push(this.statements());
 
-      this.consume('STOP', 'Expected STOP at end of program');
-      node.children.push({ type: 'Terminal', value: 'STOP' });
+      const stopToken = this.consume('STOP', 'Expected STOP at end of program');
+      node.children.push({ type: 'Terminal', value: 'STOP', line: stopToken.line, col: stopToken.col });
     } catch (e) {
       // Error already recorded
     }
@@ -97,11 +121,12 @@ class Parser {
 
   // declarations → declaration*
   declarations() {
-    const node = { type: 'Declarations', children: [] };
+    const node = { type: 'Declarations', children: [], line: this.peek().line, col: this.peek().col };
     while (this.check('INT_TYPE') || this.check('FLOAT_TYPE') || this.check('CHAR_TYPE') || 
            this.check('STRING_TYPE') || this.check('DOUBLE_TYPE') || this.check('LONG_TYPE') || 
            this.check('ARRAY')) {
       try {
+        this.logStep('Declarations -> Declaration Declarations');
         node.children.push(this.declaration());
       } catch (e) {
         this.advance();
@@ -112,29 +137,31 @@ class Parser {
 
   // declaration → DataType ID | ARRAY ID '[' NUMBER ']'
   declaration() {
+    const peekToken = this.peek();
     if (this.match('ARRAY')) {
-      const node = { type: 'ArrayDeclaration', children: [{ type: 'Terminal', value: 'ARRAY' }] };
+      this.logStep('Declaration -> ARRAY ID [ NUMBER ]', peekToken);
+      const node = { type: 'ArrayDeclaration', children: [{ type: 'Terminal', value: 'ARRAY', line: peekToken.line, col: peekToken.col }], line: peekToken.line, col: peekToken.col };
       const idToken = this.consume('ID', "Expected array name after ARRAY");
       this.variables.add(idToken.lexeme);
-      node.children.push({ type: 'Identifier', value: idToken.lexeme });
+      node.children.push({ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col });
       
-      this.consume('[', "Expected '[' after array name");
+      const openToken = this.consume('[', "Expected '[' after array name");
       const sizeToken = this.consume('NUMBER', "Expected array size");
-      node.children.push({ type: 'Number', value: sizeToken.lexeme });
-      this.consume(']', "Expected ']' after array size");
+      node.children.push({ type: 'Number', value: sizeToken.lexeme, line: sizeToken.line, col: sizeToken.col });
+      const closeToken = this.consume(']', "Expected ']' after array size");
       
       this.symbolTable.set(idToken.lexeme, `array:${sizeToken.lexeme}`);
       return node;
     } else {
-      const node = { type: 'Declaration', children: [] };
+      this.logStep('Declaration -> DataType ID', peekToken);
+      const node = { type: 'Declaration', children: [], line: peekToken.line, col: peekToken.col };
       const typeToken = this.advance(); // INT_TYPE, FLOAT_TYPE, etc.
-      node.children.push({ type: 'DataType', value: typeToken.lexeme });
+      node.children.push({ type: 'DataType', value: typeToken.lexeme, line: typeToken.line, col: typeToken.col });
       
       const idToken = this.consume('ID', "Expected variable name after datatype");
       this.variables.add(idToken.lexeme);
-      node.children.push({ type: 'Identifier', value: idToken.lexeme });
+      node.children.push({ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col });
       
-      // Store in symbol table (standard lowercase type name like int, float, char, string)
       let typeStr = 'int';
       if (typeToken.token === 'FLOAT_TYPE') typeStr = 'float';
       else if (typeToken.token === 'CHAR_TYPE') typeStr = 'char';
@@ -149,7 +176,7 @@ class Parser {
 
   // statements → statement*
   statements() {
-    const node = { type: 'Statements', children: [] };
+    const node = { type: 'Statements', children: [], line: this.peek().line, col: this.peek().col };
     while (!this.check('STOP') && !this.check('EOF') && 
            !this.check('ENDIF') && !this.check('ELSE') && 
            !this.check('ENDFOR') && !this.check('ENDWHILE') &&
@@ -161,7 +188,6 @@ class Parser {
         if (stmt) {
           node.children.push(stmt);
         } else {
-          // If statement failed, advance to avoid infinite loop
           this.advance();
         }
       } catch (e) {
@@ -173,40 +199,78 @@ class Parser {
 
   // statement → READ idList | PRINT idExpr | ID = expr | IF... | FOR... | WHILE... | SWITCH... | REPEAT... | FUNCTION... | RETURN...
   statement() {
-    if (this.match('READ')) return this.readStatement();
-    if (this.match('PRINT')) return this.printStatement();
-    if (this.match('IF')) return this.ifStatement();
-    if (this.match('FOR')) return this.forStatement();
-    if (this.match('WHILE')) return this.whileStatement();
-    if (this.match('SWITCH')) return this.switchStatement();
-    if (this.match('REPEAT')) return this.repeatStatement();
-    if (this.match('FUNCTION')) return this.functionStatement();
-    if (this.match('RETURN')) return this.returnStatement();
-    if (this.check('ID')) return this.assignmentStatement();
+    const token = this.peek();
+    
+    if (this.check('READ')) {
+      this.logStep('Statement -> READ idList');
+      this.advance();
+      return this.readStatement(token);
+    }
+    if (this.check('PRINT')) {
+      this.logStep('Statement -> PRINT expr');
+      this.advance();
+      return this.printStatement(token);
+    }
+    if (this.check('IF')) {
+      this.logStep('Statement -> IF condition THEN Statements [ELSE Statements] ENDIF');
+      this.advance();
+      return this.ifStatement(token);
+    }
+    if (this.check('FOR')) {
+      this.logStep('Statement -> FOR ID = expr TO expr Statements ENDFOR');
+      this.advance();
+      return this.forStatement(token);
+    }
+    if (this.check('WHILE')) {
+      this.logStep('Statement -> WHILE condition DO Statements ENDWHILE');
+      this.advance();
+      return this.whileStatement(token);
+    }
+    if (this.check('SWITCH')) {
+      this.logStep('Statement -> SWITCH (expr) Cases ENDSWITCH');
+      this.advance();
+      return this.switchStatement(token);
+    }
+    if (this.check('REPEAT')) {
+      this.logStep('Statement -> REPEAT Statements UNTIL condition');
+      this.advance();
+      return this.repeatStatement(token);
+    }
+    if (this.check('FUNCTION')) {
+      this.logStep('Statement -> FUNCTION ID ( params ) Statements ENDFUNCTION');
+      this.advance();
+      return this.functionStatement(token);
+    }
+    if (this.check('RETURN')) {
+      this.logStep('Statement -> RETURN expr');
+      this.advance();
+      return this.returnStatement(token);
+    }
+    if (this.check('ID')) {
+      this.logStep('Statement -> ID = expr');
+      return this.assignmentStatement();
+    }
     
     this.error('Expected a valid statement (READ, PRINT, IF, FOR, WHILE, SWITCH, REPEAT, FUNCTION, RETURN, or assignment)');
     throw new Error('Invalid statement');
   }
 
-  readStatement() {
-    const node = { type: 'ReadStatement', children: [{ type: 'Terminal', value: 'READ' }] };
+  readStatement(readToken) {
+    const node = { type: 'ReadStatement', children: [{ type: 'Terminal', value: 'READ', line: readToken.line, col: readToken.col }], line: readToken.line, col: readToken.col };
     
     do {
       const idToken = this.consume('ID', 'Expected variable name after READ');
       this.variables.add(idToken.lexeme);
-      node.children.push({ type: 'Identifier', value: idToken.lexeme });
+      node.children.push({ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col });
     } while (this.match(','));
 
     return node;
   }
 
-  printStatement() {
-    const node = { type: 'PrintStatement', children: [{ type: 'Terminal', value: 'PRINT' }] };
-    
-    // Simplification: We allow printing a variable or expression.
+  printStatement(printToken) {
+    const node = { type: 'PrintStatement', children: [{ type: 'Terminal', value: 'PRINT', line: printToken.line, col: printToken.col }], line: printToken.line, col: printToken.col };
     const e = this.expression();
     node.children.push(e);
-    
     return node;
   }
 
@@ -214,26 +278,26 @@ class Parser {
     const idToken = this.consume('ID', 'Expected variable name in assignment');
     this.variables.add(idToken.lexeme);
     
-    const node = { type: 'Assignment', children: [] };
+    const node = { type: 'Assignment', children: [], line: idToken.line, col: idToken.col };
     
     if (this.match('[')) {
       const indexExpr = this.expression();
       this.consume(']', "Expected ']' after array index");
-      node.children.push({ type: 'ArrayIndex', children: [{ type: 'Identifier', value: idToken.lexeme }, indexExpr] });
+      node.children.push({ type: 'ArrayIndex', children: [{ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col }, indexExpr], line: idToken.line, col: idToken.col });
     } else {
-      node.children.push({ type: 'Identifier', value: idToken.lexeme });
+      node.children.push({ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col });
     }
     
-    this.consume('=', "Expected '=' in assignment");
-    node.children.push({ type: 'Terminal', value: '=' });
+    const eqToken = this.consume('=', "Expected '=' in assignment");
+    node.children.push({ type: 'Terminal', value: '=', line: eqToken.line, col: eqToken.col });
     
     node.children.push(this.expression());
     
     return node;
   }
 
-  switchStatement() {
-    const node = { type: 'SwitchStatement', children: [{ type: 'Terminal', value: 'SWITCH' }] };
+  switchStatement(switchToken) {
+    const node = { type: 'SwitchStatement', children: [{ type: 'Terminal', value: 'SWITCH', line: switchToken.line, col: switchToken.col }], line: switchToken.line, col: switchToken.col };
     
     const hasParen = this.match('(');
     node.children.push(this.expression());
@@ -243,14 +307,14 @@ class Parser {
     
     node.children.push(this.cases());
     
-    this.consume('ENDSWITCH', "Expected ENDSWITCH at end of switch");
-    node.children.push({ type: 'Terminal', value: 'ENDSWITCH' });
+    const endToken = this.consume('ENDSWITCH', "Expected ENDSWITCH at end of switch");
+    node.children.push({ type: 'Terminal', value: 'ENDSWITCH', line: endToken.line, col: endToken.col });
     
     return node;
   }
 
   cases() {
-    const node = { type: 'Cases', children: [] };
+    const node = { type: 'Cases', children: [], line: this.peek().line, col: this.peek().col };
     while (this.check('CASE') || this.check('DEFAULT')) {
       if (this.check('CASE')) {
         node.children.push(this.caseItem());
@@ -262,7 +326,9 @@ class Parser {
   }
 
   caseItem() {
-    const node = { type: 'Case', children: [{ type: 'Terminal', value: 'CASE' }] };
+    const peekToken = this.peek();
+    this.logStep('Case -> CASE expr : Statements', peekToken);
+    const node = { type: 'Case', children: [{ type: 'Terminal', value: 'CASE', line: peekToken.line, col: peekToken.col }], line: peekToken.line, col: peekToken.col };
     this.consume('CASE', 'Expected CASE');
     
     node.children.push(this.expression());
@@ -271,14 +337,17 @@ class Parser {
     node.children.push(this.statements());
     
     if (this.match('BREAK')) {
-      node.children.push({ type: 'Terminal', value: 'BREAK' });
+      const breakToken = this.previous();
+      node.children.push({ type: 'Terminal', value: 'BREAK', line: breakToken.line, col: breakToken.col });
     }
     
     return node;
   }
 
   defaultCaseItem() {
-    const node = { type: 'DefaultCase', children: [{ type: 'Terminal', value: 'DEFAULT' }] };
+    const peekToken = this.peek();
+    this.logStep('DefaultCase -> DEFAULT : Statements', peekToken);
+    const node = { type: 'DefaultCase', children: [{ type: 'Terminal', value: 'DEFAULT', line: peekToken.line, col: peekToken.col }], line: peekToken.line, col: peekToken.col };
     this.consume('DEFAULT', 'Expected DEFAULT');
     
     this.consume(':', "Expected ':' after default");
@@ -287,31 +356,31 @@ class Parser {
     return node;
   }
 
-  repeatStatement() {
-    const node = { type: 'RepeatStatement', children: [{ type: 'Terminal', value: 'REPEAT' }] };
+  repeatStatement(repeatToken) {
+    const node = { type: 'RepeatStatement', children: [{ type: 'Terminal', value: 'REPEAT', line: repeatToken.line, col: repeatToken.col }], line: repeatToken.line, col: repeatToken.col };
     node.children.push(this.statements());
     
-    this.consume('UNTIL', "Expected UNTIL in REPEAT loop");
-    node.children.push({ type: 'Terminal', value: 'UNTIL' });
+    const untilToken = this.consume('UNTIL', "Expected UNTIL in REPEAT loop");
+    node.children.push({ type: 'Terminal', value: 'UNTIL', line: untilToken.line, col: untilToken.col });
     
     node.children.push(this.condition());
     return node;
   }
 
-  functionStatement() {
-    const node = { type: 'FunctionDeclaration', children: [{ type: 'Terminal', value: 'FUNCTION' }] };
+  functionStatement(funcToken) {
+    const node = { type: 'FunctionDeclaration', children: [{ type: 'Terminal', value: 'FUNCTION', line: funcToken.line, col: funcToken.col }], line: funcToken.line, col: funcToken.col };
     const idToken = this.consume('ID', "Expected function name");
     this.variables.add(idToken.lexeme);
-    node.children.push({ type: 'Identifier', value: idToken.lexeme });
+    node.children.push({ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col });
     
     this.consume('(', "Expected '(' after function name");
     
-    const params = { type: 'Parameters', children: [] };
+    const params = { type: 'Parameters', children: [], line: this.peek().line, col: this.peek().col };
     if (!this.check(')')) {
       do {
         const paramToken = this.consume('ID', "Expected parameter name");
         this.variables.add(paramToken.lexeme);
-        params.children.push({ type: 'Identifier', value: paramToken.lexeme });
+        params.children.push({ type: 'Identifier', value: paramToken.lexeme, line: paramToken.line, col: paramToken.col });
       } while (this.match(','));
     }
     this.consume(')', "Expected ')' after parameters");
@@ -319,87 +388,90 @@ class Parser {
     
     node.children.push(this.statements());
     
-    this.consume('ENDFUNCTION', "Expected ENDFUNCTION");
-    node.children.push({ type: 'Terminal', value: 'ENDFUNCTION' });
+    const endToken = this.consume('ENDFUNCTION', "Expected ENDFUNCTION");
+    node.children.push({ type: 'Terminal', value: 'ENDFUNCTION', line: endToken.line, col: endToken.col });
     
     return node;
   }
 
-  returnStatement() {
-    const node = { type: 'ReturnStatement', children: [{ type: 'Terminal', value: 'RETURN' }] };
+  returnStatement(returnToken) {
+    const node = { type: 'ReturnStatement', children: [{ type: 'Terminal', value: 'RETURN', line: returnToken.line, col: returnToken.col }], line: returnToken.line, col: returnToken.col };
     node.children.push(this.expression());
     return node;
   }
 
-  ifStatement() {
-    const node = { type: 'IfStatement', children: [{ type: 'Terminal', value: 'IF' }] };
+  ifStatement(ifToken) {
+    const node = { type: 'IfStatement', children: [{ type: 'Terminal', value: 'IF', line: ifToken.line, col: ifToken.col }], line: ifToken.line, col: ifToken.col };
     
     node.children.push(this.condition());
     
-    this.consume('THEN', "Expected THEN after condition");
-    node.children.push({ type: 'Terminal', value: 'THEN' });
+    const thenToken = this.consume('THEN', "Expected THEN after condition");
+    node.children.push({ type: 'Terminal', value: 'THEN', line: thenToken.line, col: thenToken.col });
     
     node.children.push(this.statements());
     
     if (this.match('ELSE')) {
-      node.children.push({ type: 'Terminal', value: 'ELSE' });
+      const elseToken = this.previous();
+      node.children.push({ type: 'Terminal', value: 'ELSE', line: elseToken.line, col: elseToken.col });
       node.children.push(this.statements());
     }
     
-    this.consume('ENDIF', "Expected ENDIF");
-    node.children.push({ type: 'Terminal', value: 'ENDIF' });
+    const endToken = this.consume('ENDIF', "Expected ENDIF");
+    node.children.push({ type: 'Terminal', value: 'ENDIF', line: endToken.line, col: endToken.col });
     
     return node;
   }
 
-  forStatement() {
-    const node = { type: 'ForStatement', children: [{ type: 'Terminal', value: 'FOR' }] };
+  forStatement(forToken) {
+    const node = { type: 'ForStatement', children: [{ type: 'Terminal', value: 'FOR', line: forToken.line, col: forToken.col }], line: forToken.line, col: forToken.col };
     
     const idToken = this.consume('ID', "Expected loop variable in FOR");
     this.variables.add(idToken.lexeme);
-    node.children.push({ type: 'Identifier', value: idToken.lexeme });
+    node.children.push({ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col });
     
-    this.consume('=', "Expected '=' in FOR statement");
-    node.children.push({ type: 'Terminal', value: '=' });
+    const eqToken = this.consume('=', "Expected '=' in FOR statement");
+    node.children.push({ type: 'Terminal', value: '=', line: eqToken.line, col: eqToken.col });
     
     node.children.push(this.expression());
     
-    this.consume('TO', "Expected TO in FOR statement");
-    node.children.push({ type: 'Terminal', value: 'TO' });
+    const toToken = this.consume('TO', "Expected TO in FOR statement");
+    node.children.push({ type: 'Terminal', value: 'TO', line: toToken.line, col: toToken.col });
     
     node.children.push(this.expression());
     
     node.children.push(this.statements());
     
-    this.consume('ENDFOR', "Expected ENDFOR");
-    node.children.push({ type: 'Terminal', value: 'ENDFOR' });
+    const endToken = this.consume('ENDFOR', "Expected ENDFOR");
+    node.children.push({ type: 'Terminal', value: 'ENDFOR', line: endToken.line, col: endToken.col });
     
     return node;
   }
 
-  whileStatement() {
-    const node = { type: 'WhileStatement', children: [{ type: 'Terminal', value: 'WHILE' }] };
+  whileStatement(whileToken) {
+    const node = { type: 'WhileStatement', children: [{ type: 'Terminal', value: 'WHILE', line: whileToken.line, col: whileToken.col }], line: whileToken.line, col: whileToken.col };
     
     node.children.push(this.condition());
     
-    this.consume('DO', "Expected DO in WHILE statement");
-    node.children.push({ type: 'Terminal', value: 'DO' });
+    const doToken = this.consume('DO', "Expected DO in WHILE statement");
+    node.children.push({ type: 'Terminal', value: 'DO', line: doToken.line, col: doToken.col });
     
     node.children.push(this.statements());
     
-    this.consume('ENDWHILE', "Expected ENDWHILE");
-    node.children.push({ type: 'Terminal', value: 'ENDWHILE' });
+    const endToken = this.consume('ENDWHILE', "Expected ENDWHILE");
+    node.children.push({ type: 'Terminal', value: 'ENDWHILE', line: endToken.line, col: endToken.col });
     
     return node;
   }
 
   condition() {
-    const node = { type: 'Condition', children: [] };
+    this.logStep('condition -> expr relop expr');
+    const node = { type: 'Condition', children: [], line: this.peek().line, col: this.peek().col };
     
     node.children.push(this.expression());
     
     if (this.match('==', '!=', '>', '<', '>=', '<=')) {
-      node.children.push({ type: 'Operator', value: this.previous().lexeme });
+      const opToken = this.previous();
+      node.children.push({ type: 'Operator', value: opToken.lexeme, line: opToken.line, col: opToken.col });
       node.children.push(this.expression());
     } else {
       this.error("Expected relational operator in condition");
@@ -414,12 +486,13 @@ class Parser {
   }
 
   term() {
+    this.logStep('expr -> term ((+|-) term)*');
     let expr = this.factor();
 
     while (this.match('+', '-')) {
       const operator = this.previous();
       const right = this.factor();
-      const node = { type: 'Expression', children: [expr, { type: 'Operator', value: operator.lexeme }, right] };
+      const node = { type: 'Expression', children: [expr, { type: 'Operator', value: operator.lexeme, line: operator.line, col: operator.col }, right], line: operator.line, col: operator.col };
       expr = node;
     }
 
@@ -427,12 +500,13 @@ class Parser {
   }
 
   factor() {
+    this.logStep('term -> factor ((*|/) factor)*');
     let expr = this.primary();
 
     while (this.match('*', '/')) {
       const operator = this.previous();
       const right = this.primary();
-      const node = { type: 'Expression', children: [expr, { type: 'Operator', value: operator.lexeme }, right] };
+      const node = { type: 'Expression', children: [expr, { type: 'Operator', value: operator.lexeme, line: operator.line, col: operator.col }, right], line: operator.line, col: operator.col };
       expr = node;
     }
 
@@ -440,35 +514,48 @@ class Parser {
   }
 
   primary() {
+    const token = this.peek();
+    
     if (this.match('STRING')) {
-      return { type: 'String', value: this.previous().lexeme };
+      const prev = this.previous();
+      this.logStep('factor -> STRING', prev);
+      return { type: 'String', value: prev.lexeme, line: prev.line, col: prev.col };
     }
     if (this.match('NUMBER')) {
-      return { type: 'Number', value: this.previous().lexeme };
+      const prev = this.previous();
+      this.logStep('factor -> NUMBER', prev);
+      return { type: 'Number', value: prev.lexeme, line: prev.line, col: prev.col };
     }
     if (this.match('ID')) {
       const idToken = this.previous();
+      
       if (this.match('(')) {
-        const args = { type: 'Arguments', children: [] };
+        this.logStep('factor -> FunctionCall', idToken);
+        const args = { type: 'Arguments', children: [], line: idToken.line, col: idToken.col };
         if (!this.check(')')) {
           do {
             args.children.push(this.expression());
           } while (this.match(','));
         }
         this.consume(')', "Expected ')' after arguments");
-        return { type: 'FunctionCall', children: [{ type: 'Identifier', value: idToken.lexeme }, args] };
+        return { type: 'FunctionCall', children: [{ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col }, args], line: idToken.line, col: idToken.col };
       }
+      
       if (this.match('[')) {
+        this.logStep('factor -> ArrayIndex', idToken);
         const indexExpr = this.expression();
         this.consume(']', "Expected ']' after array index");
-        return { type: 'ArrayIndex', children: [{ type: 'Identifier', value: idToken.lexeme }, indexExpr] };
+        return { type: 'ArrayIndex', children: [{ type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col }, indexExpr], line: idToken.line, col: idToken.col };
       }
-      return { type: 'Identifier', value: idToken.lexeme };
+      
+      this.logStep('factor -> ID', idToken);
+      return { type: 'Identifier', value: idToken.lexeme, line: idToken.line, col: idToken.col };
     }
     if (this.match('(')) {
+      this.logStep('factor -> ( expr )', token);
       const expr = this.expression();
       this.consume(')', "Expected ')' after expression");
-      return { type: 'Group', children: [expr] };
+      return { type: 'Group', children: [expr], line: token.line, col: token.col };
     }
     
     this.error("Expected expression (number, identifier, or '(')");
