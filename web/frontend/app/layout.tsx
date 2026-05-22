@@ -6,8 +6,8 @@ import Navbar from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Algorithm to C Converter",
-  description: "A compiler front-end web application",
+  title: "CompilerFlow",
+  description: "An interactive algorithm parsing and multi-language compilation workflow visualizer.",
 };
 
 export default function RootLayout({
