@@ -151,21 +151,21 @@ export default function OutputPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-1 glass rounded-2xl p-6 border border-zinc-300 dark:border-zinc-800 h-fit flex flex-col"
+          className="lg:col-span-1 bg-zinc-900 rounded-2xl p-6 border border-zinc-800 h-fit flex flex-col"
         >
-          <h3 className="text-lg font-bold mb-4 text-zinc-800 dark:text-zinc-200 flex items-center">
+          <h3 className="text-lg font-bold mb-4 text-zinc-200 flex items-center">
             <Activity className="w-4 h-4 mr-2 text-blue-500" />
             Console Configuration
           </h3>
           
           <div className="mb-6">
-            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
+            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">
               Standard Input (stdin)
             </label>
             <textarea
               value={inputs}
               onChange={(e) => setInputs(e.target.value)}
-              className="w-full h-36 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-xl p-3 text-sm font-mono text-zinc-800 dark:text-zinc-200 focus:border-blue-500 outline-none resize-none shadow-inner"
+              className="w-full h-36 bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-sm font-mono text-zinc-200 focus:border-blue-500 outline-none resize-none shadow-inner placeholder-zinc-600"
               placeholder="Enter space-separated inputs (e.g. 5 10)"
             />
             <p className="text-[10px] text-zinc-400 font-semibold mt-2 leading-relaxed">

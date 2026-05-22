@@ -351,7 +351,13 @@ export default function ParseTreePage() {
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.05}
           maxZoom={2}
-          className="bg-zinc-950"
+          className="bg-zinc-950 h-full w-full flex-1"
+          style={{ width: '100%', height: '100%', minHeight: '480px' }}
+          onInit={(reactFlowInstance) => {
+            setTimeout(() => {
+              reactFlowInstance.fitView({ padding: 0.2 });
+            }, 150);
+          }}
         >
           <Background color="#27272a" gap={24} size={1.5} />
           <Controls className="bg-zinc-900 border-zinc-700 fill-zinc-300 rounded-lg shadow-md border" />

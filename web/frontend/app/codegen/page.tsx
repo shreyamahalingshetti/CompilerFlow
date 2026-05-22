@@ -145,14 +145,14 @@ export default function CodeGenPage() {
             transition={{ delay: 0.1 }}
             className="flex-1 flex flex-col border border-zinc-300 dark:border-zinc-800 rounded-xl overflow-hidden glass shadow-lg min-h-0"
           >
-            <div className="h-12 bg-zinc-100 dark:bg-zinc-900/80 border-b border-zinc-300 dark:border-zinc-800 flex items-center justify-between px-4 shrink-0">
-              <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono flex items-center">
+            <div className="h-12 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
+              <span className="text-sm font-bold text-indigo-400 font-mono flex items-center">
                 <Terminal className="w-4 h-4 mr-2" />
                 Three Address Code (TAC)
               </span>
             </div>
-            <div className="flex-1 min-h-[180px] p-4 bg-zinc-50 dark:bg-[#0c0c0e] overflow-y-auto">
-              <pre className="font-mono text-sm text-indigo-600 dark:text-indigo-300 leading-relaxed">
+            <div className="flex-1 min-h-[180px] p-4 bg-zinc-950 overflow-y-auto">
+              <pre className="font-mono text-sm text-indigo-300 leading-relaxed">
                 {tac || "; No TAC generated"}
               </pre>
             </div>
@@ -165,8 +165,8 @@ export default function CodeGenPage() {
             transition={{ delay: 0.15 }}
             className="h-[200px] flex flex-col border border-zinc-300 dark:border-zinc-800 rounded-xl overflow-hidden glass shadow-lg shrink-0"
           >
-            <div className="h-12 bg-zinc-100 dark:bg-zinc-900/80 border-b border-zinc-300 dark:border-zinc-800 flex items-center justify-between px-4 shrink-0">
-              <span className="text-sm font-bold text-green-600 dark:text-green-400 font-mono flex items-center">
+            <div className="h-12 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
+              <span className="text-sm font-bold text-green-400 font-mono flex items-center">
                 <ShieldCheck className="w-4 h-4 mr-2" />
                 AST Optimization Log
               </span>
@@ -174,7 +174,7 @@ export default function CodeGenPage() {
                 Active
               </span>
             </div>
-            <div className="flex-1 p-4 bg-zinc-50 dark:bg-[#0c0c0e] overflow-y-auto font-mono text-xs text-zinc-700 dark:text-zinc-300 leading-normal">
+            <div className="flex-1 p-4 bg-zinc-950 overflow-y-auto font-mono text-xs text-zinc-300 leading-normal">
               {optimizationLog.length === 0 ? (
                 <div className="text-zinc-500 italic font-semibold flex items-center justify-center h-full">
                   No constant folding or dead code optimization required.
@@ -198,10 +198,10 @@ export default function CodeGenPage() {
           initial={{ opacity: 0, x: 15 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="lg:col-span-3 flex flex-col border border-zinc-300 dark:border-zinc-800 rounded-xl overflow-hidden glass shadow-2xl min-h-0"
+          className="lg:col-span-3 flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900/50 shadow-2xl min-h-0"
         >
           {/* Tabs header */}
-          <div className="h-14 bg-zinc-100 dark:bg-zinc-900/80 border-b border-zinc-300 dark:border-zinc-800 flex items-center justify-between px-4 shrink-0 overflow-x-auto">
+          <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0 overflow-x-auto">
             <div className="flex space-x-1 mr-4 shrink-0">
               {tabs.map((tab) => (
                 <button
@@ -210,7 +210,7 @@ export default function CodeGenPage() {
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     activeTab === tab.key
                       ? "bg-blue-600 text-white shadow-[0_0_8px_rgba(59,130,246,0.3)]"
-                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                      : "text-zinc-400 hover:text-white hover:bg-zinc-800"
                   }`}
                 >
                   {tab.label}
@@ -220,21 +220,21 @@ export default function CodeGenPage() {
 
             {/* Actions panel */}
             <div className="flex items-center space-x-2 shrink-0">
-              <span className="text-xs font-mono font-bold text-zinc-500 mr-2 hidden sm:inline">
+              <span className="text-xs font-mono font-bold text-zinc-400 mr-2 hidden sm:inline">
                 {getFilename()}
               </span>
               
               <button 
                 onClick={handleCopy}
-                className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 rounded-lg transition-colors border border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                className="p-2 text-zinc-400 hover:text-blue-400 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors border border-zinc-700 cursor-pointer"
                 title="Copy to Clipboard"
               >
-                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               </button>
               
               <button 
                 onClick={handleDownload}
-                className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-purple-500 dark:hover:text-purple-400 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 rounded-lg transition-colors border border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                className="p-2 text-zinc-400 hover:text-purple-400 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors border border-zinc-700 cursor-pointer"
                 title={`Download ${getFilename()}`}
               >
                 <Download className="w-4 h-4" />
@@ -243,8 +243,8 @@ export default function CodeGenPage() {
           </div>
 
           {/* Generated Code Code Screen */}
-          <div className="flex-1 p-4 bg-zinc-50 dark:bg-[#0c0c0e] overflow-y-auto">
-            <pre className="font-mono text-sm text-blue-600 dark:text-blue-400 leading-relaxed whitespace-pre">
+          <div className="flex-1 p-4 bg-zinc-950 overflow-y-auto">
+            <pre className="font-mono text-sm text-blue-400 leading-relaxed whitespace-pre">
               {getActiveCode()}
             </pre>
           </div>
