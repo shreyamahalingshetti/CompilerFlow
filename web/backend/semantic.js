@@ -278,8 +278,14 @@ class SemanticAnalyzer {
       return true;
     }
 
-    this.error(`Semantic Error: Variable '${name}' not declared`, idNode);
-    return false;
+    // Register implicitly as 'int' globally
+    this.symbolTable.set(name, {
+      type: 'int',
+      scope: 'global',
+      line: idNode.line,
+      col: idNode.col
+    });
+    return true;
   }
 
   getVariableInfo(name) {

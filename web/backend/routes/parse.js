@@ -41,6 +41,14 @@ router.post('/', (req, res) => {
       const semanticAnalyzer = new SemanticAnalyzer(parseResult.tree);
       semanticErrors = semanticAnalyzer.analyze();
 
+      // Synchronize implicitly registered variables back into parseResult
+      for (const [name, info] of semanticAnalyzer.symbolTable.entries()) {
+        parseResult.symbolTable[name] = info.type;
+        if (!parseResult.variables.includes(name)) {
+          parseResult.variables.push(name);
+        }
+      }
+
       // 4. Optimization Phase
       const optimizer = new CompilerOptimizer(parseResult.tree);
       const optResult = optimizer.optimize();
